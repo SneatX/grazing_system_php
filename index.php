@@ -22,11 +22,37 @@ $RESULTS = "
             <tr>
                 <th class='px-4 py-2'>Day</th>
                 <th class='px-4 py-2'>Grass</th>
+                <th class='px-4 py-2'>Grass comsuptiom</th>
                 <th class='px-4 py-2'>Herbivores</th>
+                <th class='px-4 py-2'>Hervivores hunted</th>
+                <th class='px-4 py-2'>Hervivores reproduction</th>
                 <th class='px-4 py-2'>Carnivores</th>
+                <th class='px-4 py-2'>Carnivores Dead</th>
+                <th class='px-4 py-2'>Carnivores reproduction</th>
             </tr>
         </thead>
         <tbody>";
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    setVariables();
+    $onSimulation = true;
+    $grass_growth_final_value = ($grass_growth_base_rate / 100) * $climate_factor;
+
+    startSimulation(
+        $grass_growth_final_value,
+        $actual_grass,
+        $maximun_grass_capacity,
+        $herbivores,
+        $herbivores_consumption,
+        $herbivores_reproduction_rate,
+        $carnivores,
+        $carnivores_hunting_rate,
+        $carnivores_food_reproduction_rate,
+        $carnivores_food_requeriment
+    );
+
+    $RESULTS .= "</tbody></table>";
+}
 
 function setVariables()
 {
@@ -38,64 +64,73 @@ function setVariables()
     $number_of_days = isset($_POST['number_of_days']) ? max(1, intval($_POST['number_of_days'])) : 1;
 
     $actual_grass = isset($_POST['actual_grass']) ? max(1, intval($_POST['actual_grass'])) : 1;
-    $grass_growth_base_rate = isset($_POST['grass_growth_base_rate']) ? max(0.1, floatval($_POST['grass_growth_base_rate']) / 100) : 0.1;
+    $grass_growth_base_rate = isset($_POST['grass_growth_base_rate']) ? max(0.1, floatval($_POST['grass_growth_base_rate'])) : 0.1;
     $maximun_grass_capacity = isset($_POST['maximun_grass_capacity']) ? intval($_POST['maximun_grass_capacity']) : 1;
 
     $herbivores = isset($_POST['herbivores']) ? max(1, intval($_POST['herbivores'])) : 1;
     $herbivores_consumption = isset($_POST['herbivores_consumption']) ? max(1, floatval($_POST['herbivores_consumption'])) : 1;
-    $herbivores_reproduction_rate = isset($_POST['herbivores_reproduction_rate']) ? max(0.1, floatval($_POST['herbivores_reproduction_rate']) / 100) : 0.1;
+    $herbivores_reproduction_rate = isset($_POST['herbivores_reproduction_rate']) ? max(0.1, floatval($_POST['herbivores_reproduction_rate'])) : 0.1;
 
     $carnivores = isset($_POST['carnivores']) ? max(1, intval($_POST['carnivores'])) : 1;
     $carnivores_hunting_rate = isset($_POST['carnivores_hunting_rate']) ? max(1, floatval($_POST['carnivores_hunting_rate'])) : 1;
-    $carnivores_food_reproduction_rate = isset($_POST['carnivores_food_reproduction_rate']) ? max(0.1, floatval($_POST['carnivores_food_reproduction_rate']) / 100) : 0.1;
+    $carnivores_food_reproduction_rate = isset($_POST['carnivores_food_reproduction_rate']) ? max(0.1, floatval($_POST['carnivores_food_reproduction_rate'])) : 0.1;
     $carnivores_food_requeriment = isset($_POST['carnivores_food_requeriment']) ? max(1, floatval($_POST['carnivores_food_requeriment'])) : 1;
 }
 
-function nextDay($day, $grass_growth_final_value)
-{
-    global $RESULTS;
-    global $actual_grass, $maximun_grass_capacity; //Grass parameters 
-    global $herbivores, $herbivores_consumption, $herbivores_reproduction_rate; //Herbivores parameters
-    global $carnivores, $carnivores_hunting_rate, $carnivores_food_reproduction_rate, $carnivores_food_requeriment; //Carnivores parameters
+function startSimulation(
+    $grass_growth_final_value,
+    $actual_grass,
+    $maximun_grass_capacity, //Grass parameters 
+    $herbivores,
+    $herbivores_consumption,
+    $herbivores_reproduction_rate, //Herbivores parameters
+    $carnivores,
+    $carnivores_hunting_rate,
+    $carnivores_food_reproduction_rate,
+    $carnivores_food_requeriment //Carnivores parameters
+) {
 
-    //Grass calculation
-    $actual_grass = $actual_grass + ($grass_growth_final_value * $actual_grass);
-
-    //Herbivores calculation
-    $total_comsumption = $herbivores * $herbivores_consumption;
-    $actual_grass = intval(max(0, $actual_grass - $total_comsumption));
-    $herbivoresReproduction = ($herbivores * $herbivores_reproduction_rate * ($actual_grass / $maximun_grass_capacity));
-    $huntedHerbivores = min($herbivores, $carnivores * $carnivores_hunting_rate);
-    $herbivores = intval($herbivores + $herbivoresReproduction - $huntedHerbivores);
-
-    //Carnivores calculation
-    $carnivoresReproduction = $huntedHerbivores * $carnivores_food_reproduction_rate;
-    $deadCarnivores = $carnivores * (1 - ($huntedHerbivores / ($carnivores * $carnivores_food_requeriment)));
-    $carnivores = intval($carnivores + $carnivoresReproduction - $deadCarnivores);
-
-    $RESULTS .= "
-    <tr>
-        <td class='border px-4 py-2'>$day</td>
-        <td class='border px-4 py-2'>$actual_grass</td>
-        <td class='border px-4 py-2'>$herbivores</td>
-        <td class='border px-4 py-2'>$carnivores</td>
-    </tr>";
-}
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    setVariables();
-    $onSimulation = true;
-    $grass_growth_final_value = $grass_growth_base_rate * $climate_factor;
+    global $RESULTS, $number_of_days;
+    $herbivores_reproduction_rate /= 100;
+    $carnivores_food_reproduction_rate /= 100;
 
     $day = 1;
-    while ($day <= $number_of_days && $actual_grass > 0 && $herbivores > 0 && $carnivores > 0) {
-        nextDay($day, $grass_growth_final_value);
+    while ($day <= $number_of_days && intval($actual_grass) > 0 && intval($herbivores) > 0 && intval($carnivores) > 0) {
+        //Grass calculation
+        $actual_grass = $actual_grass + ($grass_growth_final_value * $actual_grass);
+        $actual_grass = min($actual_grass, $maximun_grass_capacity);
+
+
+        //Herbivores calculation
+        $total_comsumption = $herbivores * $herbivores_consumption;
+        $actual_grass = (max(0, $actual_grass - $total_comsumption)); //intval
+        $herbivoresReproduction = ($herbivores * $herbivores_reproduction_rate * ($actual_grass / $maximun_grass_capacity));
+        $huntedHerbivores = min($herbivores, $carnivores * $carnivores_hunting_rate);
+        $herbivores = ($herbivores + $herbivoresReproduction - $huntedHerbivores); //intval
+
+        //Carnivores calculation
+        $carnivoresReproduction = $huntedHerbivores * $carnivores_food_reproduction_rate;
+        $deadCarnivores = $carnivores * (1 - ($huntedHerbivores / ($carnivores * $carnivores_food_requeriment)));
+        $carnivores = ($carnivores + $carnivoresReproduction - $deadCarnivores); //intval
+
+        $RESULTS .= "
+        <tr>
+            <td class='border px-4 py-2'>$day</td>
+            <td class='border px-4 py-2 bg-gray-700'>" . number_format($actual_grass, 2) . "</td>
+            <td class='border px-4 py-2'>" . number_format($total_comsumption, 2) . "</td>
+            <td class='border px-4 py-2 bg-gray-700'>" . number_format($herbivores, 2) . "</td>
+            <td class='border px-4 py-2'>" . number_format($huntedHerbivores, 2) . "</td>
+            <td class='border px-4 py-2'>" . number_format($herbivoresReproduction, 2) . "</td>
+            <td class='border px-4 py-2 bg-gray-700'>" . number_format($carnivores, 2) . "</td>
+            <td class='border px-4 py-2'>" . number_format($deadCarnivores, 2) . "</td>
+            <td class='border px-4 py-2'>" . number_format($carnivoresReproduction, 2) . "</td>
+        </tr>";
         $day++;
+        
     }
 
-
-    $RESULTS .= "</tbody></table>";
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -119,7 +154,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </section>
 
         <section class="grid <?= $onSimulation ? "grid-cols-2" : "grid-cols-1"; ?>">
-            <article class="w-3/4 mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700">
+            <article class="w-3/4 h-[98vh] mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700">
                 <form method="post" action="" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
 
@@ -214,7 +249,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </form>
             </article>
 
-            <article>
+            <article class="w-3/4 min-h-[98vh] mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700 overflow-auto">
                 <?= $onSimulation == false ? "" :  $RESULTS ?>
             </article>
 
