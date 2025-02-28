@@ -126,9 +126,7 @@ function startSimulation(
             <td class='border px-4 py-2'>" . number_format($carnivoresReproduction, 2) . "</td>
         </tr>";
         $day++;
-        
     }
-
 }
 
 ?>
@@ -154,7 +152,7 @@ function startSimulation(
         </section>
 
         <section class="grid <?= $onSimulation ? "grid-cols-2" : "grid-cols-1"; ?>">
-            <article class="w-3/4 h-[98vh] mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700">
+            <article class="w-6/7 h-[98vh] mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700">
                 <form method="post" action="" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
 
@@ -249,7 +247,7 @@ function startSimulation(
                 </form>
             </article>
 
-            <article class="w-3/4 min-h-[98vh] mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700 overflow-auto">
+            <article class="w-6/7 min-h-[98vh] mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700 overflow-auto">
                 <?= $onSimulation == false ? "" :  $RESULTS ?>
             </article>
 
