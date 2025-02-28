@@ -17,7 +17,6 @@ $carnivores_food_reproduction_rate = ""; //%
 $carnivores_food_requeriment = "";
 
 $RESULTS = "
-
     <table class='min-w-full divide-y divide-gray-700 text-sm'>
         <thead>
             <tr class='text-center '>
@@ -78,41 +77,45 @@ function setVariables()
 }
 
 function startSimulation(
-    $actual_grass,
-    $maximun_grass_capacity, //Grass parameters 
-    $herbivores,
+    $actual_grass, //Grass parameters
+    $maximun_grass_capacity,  
+    $herbivores, //Herbivores parameters
     $herbivores_consumption,
-    $herbivores_reproduction_rate, //Herbivores parameters
-    $carnivores,
+    $herbivores_reproduction_rate, 
+    $carnivores, //Carnivores parameters
     $carnivores_hunting_rate,
     $carnivores_food_reproduction_rate,
-    $carnivores_food_requeriment //Carnivores parameters
+    $carnivores_food_requeriment 
 ) {
-
     global $RESULTS, $number_of_days, $grass_growth_base_rate, $climate_factor, $averageClimateFactor, $day;
     $herbivores_reproduction_rate /= 100;
     $carnivores_food_reproduction_rate /= 100;
 
     $day = 1;
-    
-    while ($day <= $number_of_days && intval($actual_grass) > 0 && intval($herbivores) > 0 && intval($carnivores) > 0) {
+    while (
+        $day <= $number_of_days &&
+        intval($actual_grass) > 0 &&
+        intval($herbivores) > 0 &&
+        intval($carnivores) > 0
+        ) {
+        //Dialy climate factor calculation
         $climate_factor = rand(70, 130) / 100;
         $grass_growth_final_value = ($grass_growth_base_rate / 100) * $climate_factor;
         $averageClimateFactor += $climate_factor;
 
-        //Grass calculation
+        //Grass parameters calculation
         $actual_grass = $actual_grass + ($grass_growth_final_value * $actual_grass);
         $actual_grass = min($actual_grass, $maximun_grass_capacity);
 
 
-        //Herbivores calculation
+        //Herbivores parameters calculation
         $total_comsumption = $herbivores * $herbivores_consumption;
         $actual_grass = (max(0, $actual_grass - $total_comsumption)); //intval
         $herbivoresReproduction = ($herbivores * $herbivores_reproduction_rate * ($actual_grass / $maximun_grass_capacity));
         $huntedHerbivores = min($herbivores, $carnivores * $carnivores_hunting_rate);
         $herbivores = ($herbivores + $herbivoresReproduction - $huntedHerbivores); //intval
 
-        //Carnivores calculation
+        //Carnivores parameters calculation
         $carnivoresReproduction = $huntedHerbivores * $carnivores_food_reproduction_rate;
         $deadCarnivores = $carnivores * (1 - ($huntedHerbivores / ($carnivores * $carnivores_food_requeriment)));
         $carnivores = ($carnivores + $carnivoresReproduction - $deadCarnivores); //intval
@@ -173,7 +176,7 @@ function startSimulation(
 
                         <div class="space-y-2">
                             <label class="block text-gray-300 font-medium" for="actual_grass">Average climate factor (random):</label>
-                            <input type="number" id="climate_factor" name="climate_factor" value="<?= $onSimulation == false ? "": ($averageClimateFactor/($day-1)) ?>"
+                            <input type="number" id="climate_factor" name="climate_factor" value="<?= $onSimulation == false ? "" : ($averageClimateFactor / ($day - 1)) ?>"
                                 class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                                 readonly>
                         </div>
