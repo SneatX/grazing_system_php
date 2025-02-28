@@ -1,7 +1,7 @@
 <?php
-$number_of_days = "";
-$climate_factor = rand(70, 130) / 100;
 $onSimulation = false;
+$number_of_days = "";
+$averageClimateFactor = 0;
 
 $actual_grass = "";
 $grass_growth_base_rate = ""; //%
@@ -17,12 +17,14 @@ $carnivores_food_reproduction_rate = ""; //%
 $carnivores_food_requeriment = "";
 
 $RESULTS = "
-    <table class='table-auto w-full text-left text-gray-300'>
+
+    <table class='min-w-full divide-y divide-gray-700 text-sm'>
         <thead>
-            <tr>
+            <tr class='text-center '>
                 <th class='px-4 py-2'>Day</th>
                 <th class='px-4 py-2'>Grass</th>
                 <th class='px-4 py-2'>Grass comsuptiom</th>
+                <th class='px-4 py-2'>Climate factor</th>
                 <th class='px-4 py-2'>Herbivores</th>
                 <th class='px-4 py-2'>Hervivores hunted</th>
                 <th class='px-4 py-2'>Hervivores reproduction</th>
@@ -36,10 +38,8 @@ $RESULTS = "
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     setVariables();
     $onSimulation = true;
-    $grass_growth_final_value = ($grass_growth_base_rate / 100) * $climate_factor;
 
     startSimulation(
-        $grass_growth_final_value,
         $actual_grass,
         $maximun_grass_capacity,
         $herbivores,
@@ -61,24 +61,23 @@ function setVariables()
     global $herbivores, $herbivores_consumption, $herbivores_reproduction_rate; //Herbivores parameters
     global $carnivores, $carnivores_hunting_rate, $carnivores_food_reproduction_rate, $carnivores_food_requeriment; //Carnivores parameters
 
-    $number_of_days = isset($_POST['number_of_days']) ? max(1, intval($_POST['number_of_days'])) : 1;
+    $number_of_days = isset($_POST['number_of_days']) ? max(10, intval($_POST['number_of_days'])) : 10;
 
-    $actual_grass = isset($_POST['actual_grass']) ? max(1, intval($_POST['actual_grass'])) : 1;
-    $grass_growth_base_rate = isset($_POST['grass_growth_base_rate']) ? max(0.1, floatval($_POST['grass_growth_base_rate'])) : 0.1;
-    $maximun_grass_capacity = isset($_POST['maximun_grass_capacity']) ? intval($_POST['maximun_grass_capacity']) : 1;
+    $actual_grass = isset($_POST['actual_grass']) ? max(1000, intval($_POST['actual_grass'])) : 1000;
+    $grass_growth_base_rate = isset($_POST['grass_growth_base_rate']) ? max(10, floatval($_POST['grass_growth_base_rate'])) : 10;
+    $maximun_grass_capacity = isset($_POST['maximun_grass_capacity']) ? max(10000, intval($_POST['maximun_grass_capacity'])) : 10000;
 
-    $herbivores = isset($_POST['herbivores']) ? max(1, intval($_POST['herbivores'])) : 1;
-    $herbivores_consumption = isset($_POST['herbivores_consumption']) ? max(1, floatval($_POST['herbivores_consumption'])) : 1;
-    $herbivores_reproduction_rate = isset($_POST['herbivores_reproduction_rate']) ? max(0.1, floatval($_POST['herbivores_reproduction_rate'])) : 0.1;
+    $herbivores = isset($_POST['herbivores']) ? max(10, intval($_POST['herbivores'])) : 10;
+    $herbivores_consumption = isset($_POST['herbivores_consumption']) ? max(5, floatval($_POST['herbivores_consumption'])) : 5;
+    $herbivores_reproduction_rate = isset($_POST['herbivores_reproduction_rate']) ? max(10, floatval($_POST['herbivores_reproduction_rate'])) : 10;
 
-    $carnivores = isset($_POST['carnivores']) ? max(1, intval($_POST['carnivores'])) : 1;
-    $carnivores_hunting_rate = isset($_POST['carnivores_hunting_rate']) ? max(1, floatval($_POST['carnivores_hunting_rate'])) : 1;
-    $carnivores_food_reproduction_rate = isset($_POST['carnivores_food_reproduction_rate']) ? max(0.1, floatval($_POST['carnivores_food_reproduction_rate'])) : 0.1;
-    $carnivores_food_requeriment = isset($_POST['carnivores_food_requeriment']) ? max(1, floatval($_POST['carnivores_food_requeriment'])) : 1;
+    $carnivores = isset($_POST['carnivores']) ? max(2, intval($_POST['carnivores'])) : 2;
+    $carnivores_hunting_rate = isset($_POST['carnivores_hunting_rate']) ? max(0.5, floatval($_POST['carnivores_hunting_rate'])) : 0.5;
+    $carnivores_food_reproduction_rate = isset($_POST['carnivores_food_reproduction_rate']) ? max(30, floatval($_POST['carnivores_food_reproduction_rate'])) : 30;
+    $carnivores_food_requeriment = isset($_POST['carnivores_food_requeriment']) ? max(0.2, floatval($_POST['carnivores_food_requeriment'])) : 0.2;
 }
 
 function startSimulation(
-    $grass_growth_final_value,
     $actual_grass,
     $maximun_grass_capacity, //Grass parameters 
     $herbivores,
@@ -90,12 +89,17 @@ function startSimulation(
     $carnivores_food_requeriment //Carnivores parameters
 ) {
 
-    global $RESULTS, $number_of_days;
+    global $RESULTS, $number_of_days, $grass_growth_base_rate, $climate_factor, $averageClimateFactor, $day;
     $herbivores_reproduction_rate /= 100;
     $carnivores_food_reproduction_rate /= 100;
 
     $day = 1;
+    
     while ($day <= $number_of_days && intval($actual_grass) > 0 && intval($herbivores) > 0 && intval($carnivores) > 0) {
+        $climate_factor = rand(70, 130) / 100;
+        $grass_growth_final_value = ($grass_growth_base_rate / 100) * $climate_factor;
+        $averageClimateFactor += $climate_factor;
+
         //Grass calculation
         $actual_grass = $actual_grass + ($grass_growth_final_value * $actual_grass);
         $actual_grass = min($actual_grass, $maximun_grass_capacity);
@@ -114,16 +118,17 @@ function startSimulation(
         $carnivores = ($carnivores + $carnivoresReproduction - $deadCarnivores); //intval
 
         $RESULTS .= "
-        <tr>
-            <td class='border px-4 py-2'>$day</td>
-            <td class='border px-4 py-2 bg-gray-700'>" . number_format($actual_grass, 2) . "</td>
-            <td class='border px-4 py-2'>" . number_format($total_comsumption, 2) . "</td>
-            <td class='border px-4 py-2 bg-gray-700'>" . number_format($herbivores, 2) . "</td>
-            <td class='border px-4 py-2'>" . number_format($huntedHerbivores, 2) . "</td>
-            <td class='border px-4 py-2'>" . number_format($herbivoresReproduction, 2) . "</td>
-            <td class='border px-4 py-2 bg-gray-700'>" . number_format($carnivores, 2) . "</td>
-            <td class='border px-4 py-2'>" . number_format($deadCarnivores, 2) . "</td>
-            <td class='border px-4 py-2'>" . number_format($carnivoresReproduction, 2) . "</td>
+        <tr class='hover:bg-gray-700/30 transition-colors'>
+            <td class='px-4 py-2'>$day</td>
+            <td class='px-4 py-2 bg-gray-700'>" . number_format($actual_grass, 2) . "</td>
+            <td class='px-4 py-2'>" . number_format($total_comsumption, 2) . "</td>
+            <td class='px-4 py-2'>" . number_format($climate_factor, 2) . "</td>
+            <td class='px-4 py-2 bg-gray-700'>" . number_format($herbivores, 0) . "</td>
+            <td class='px-4 py-2'>" . number_format($huntedHerbivores, 2) . "</td>
+            <td class='px-4 py-2'>" . number_format($herbivoresReproduction, 2) . "</td>
+            <td class='px-4 py-2 bg-gray-700'>" . number_format($carnivores, 0) . "</td>
+            <td class='px-4 py-2'>" . number_format($deadCarnivores, 2) . "</td>
+            <td class='px-4 py-2'>" . number_format($carnivoresReproduction, 2) . "</td>
         </tr>";
         $day++;
     }
@@ -152,7 +157,7 @@ function startSimulation(
         </section>
 
         <section class="grid <?= $onSimulation ? "grid-cols-2" : "grid-cols-1"; ?>">
-            <article class="w-6/7 h-[98vh] mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700">
+            <article class="w-6/7 mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700">
                 <form method="post" action="" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
 
@@ -167,8 +172,8 @@ function startSimulation(
                         </div>
 
                         <div class="space-y-2">
-                            <label class="block text-gray-300 font-medium" for="actual_grass">Climate factor (random):</label>
-                            <input type="number" id="climate_factor" name="climate_factor" value="<?= $climate_factor ?>"
+                            <label class="block text-gray-300 font-medium" for="actual_grass">Average climate factor (random):</label>
+                            <input type="number" id="climate_factor" name="climate_factor" value="<?= $onSimulation == false ? "": ($averageClimateFactor/($day-1)) ?>"
                                 class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                                 readonly>
                         </div>
@@ -247,7 +252,7 @@ function startSimulation(
                 </form>
             </article>
 
-            <article class="w-6/7 min-h-[98vh] mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700 overflow-auto">
+            <article class="<?= $onSimulation == false ? "" :  "w-6/7 mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700 overflow-auto" ?>">
                 <?= $onSimulation == false ? "" :  $RESULTS ?>
             </article>
 
