@@ -2,42 +2,25 @@
 $onSimulation = false;
 $number_of_days = "";
 $averageClimateFactor = 0;
+$simulationResults = []; // Array para almacenar los resultados diarios
 
+// Parámetros de entrada
 $actual_grass = "";
-$grass_growth_base_rate = ""; //%
+$grass_growth_base_rate = "";
 $maximun_grass_capacity = "";
 
 $herbivores = "";
 $herbivores_consumption = "";
-$herbivores_reproduction_rate = ""; //%
+$herbivores_reproduction_rate = "";
 
 $carnivores = "";
-$carnivores_hunting_rate = ""; //%
-$carnivores_food_reproduction_rate = ""; //%
+$carnivores_hunting_rate = "";
+$carnivores_food_reproduction_rate = "";
 $carnivores_food_requeriment = "";
-
-$RESULTS = "
-    <table class='min-w-full divide-y divide-gray-700 text-sm'>
-        <thead>
-            <tr class='text-center '>
-                <th class='px-4 py-2'>Day</th>
-                <th class='px-4 py-2'>Grass</th>
-                <th class='px-4 py-2'>Grass comsuptiom</th>
-                <th class='px-4 py-2'>Climate factor</th>
-                <th class='px-4 py-2'>Herbivores</th>
-                <th class='px-4 py-2'>Hervivores hunted</th>
-                <th class='px-4 py-2'>Hervivores reproduction</th>
-                <th class='px-4 py-2'>Carnivores</th>
-                <th class='px-4 py-2'>Carnivores Dead</th>
-                <th class='px-4 py-2'>Carnivores reproduction</th>
-            </tr>
-        </thead>
-        <tbody>";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     setVariables();
     $onSimulation = true;
-
     startSimulation(
         $actual_grass,
         $maximun_grass_capacity,
@@ -49,16 +32,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $carnivores_food_reproduction_rate,
         $carnivores_food_requeriment
     );
-
-    $RESULTS .= "</tbody></table>";
 }
 
 function setVariables()
 {
     global $number_of_days;
-    global $actual_grass, $grass_growth_base_rate, $maximun_grass_capacity; //Grass parameters
-    global $herbivores, $herbivores_consumption, $herbivores_reproduction_rate; //Herbivores parameters
-    global $carnivores, $carnivores_hunting_rate, $carnivores_food_reproduction_rate, $carnivores_food_requeriment; //Carnivores parameters
+    global $actual_grass, $grass_growth_base_rate, $maximun_grass_capacity; // Parámetros de la hierba
+    global $herbivores, $herbivores_consumption, $herbivores_reproduction_rate; // Parámetros de herbívoros
+    global $carnivores, $carnivores_hunting_rate, $carnivores_food_reproduction_rate, $carnivores_food_requeriment; // Parámetros de carnívoros
 
     $number_of_days = isset($_POST['number_of_days']) ? max(10, intval($_POST['number_of_days'])) : 10;
 
@@ -77,17 +58,19 @@ function setVariables()
 }
 
 function startSimulation(
-    $actual_grass, //Grass parameters
-    $maximun_grass_capacity,  
-    $herbivores, //Herbivores parameters
+    $actual_grass, // Parámetros de la hierba
+    $maximun_grass_capacity,
+    $herbivores, // Parámetros de herbívoros
     $herbivores_consumption,
-    $herbivores_reproduction_rate, 
-    $carnivores, //Carnivores parameters
+    $herbivores_reproduction_rate,
+    $carnivores, // Parámetros de carnívoros
     $carnivores_hunting_rate,
     $carnivores_food_reproduction_rate,
-    $carnivores_food_requeriment 
+    $carnivores_food_requeriment
 ) {
-    global $RESULTS, $number_of_days, $grass_growth_base_rate, $climate_factor, $averageClimateFactor, $day;
+    global $number_of_days, $grass_growth_base_rate, $averageClimateFactor, $simulationResults;
+
+    // Convertir porcentajes a decimales
     $herbivores_reproduction_rate /= 100;
     $carnivores_food_reproduction_rate /= 100;
 
@@ -97,46 +80,44 @@ function startSimulation(
         intval($actual_grass) > 0 &&
         intval($herbivores) > 0 &&
         intval($carnivores) > 0
-        ) {
-        //Dialy climate factor calculation
+    ) {
+        // Cálculo diario del factor climático
         $climate_factor = rand(70, 130) / 100;
         $grass_growth_final_value = ($grass_growth_base_rate / 100) * $climate_factor;
         $averageClimateFactor += $climate_factor;
 
-        //Grass parameters calculation
+        // Cálculo de la hierba
         $actual_grass = $actual_grass + ($grass_growth_final_value * $actual_grass);
         $actual_grass = min($actual_grass, $maximun_grass_capacity);
 
-
-        //Herbivores parameters calculation
-        $total_comsumption = $herbivores * $herbivores_consumption;
-        $actual_grass = (max(0, $actual_grass - $total_comsumption)); //intval
-        $herbivoresReproduction = ($herbivores * $herbivores_reproduction_rate * ($actual_grass / $maximun_grass_capacity));
+        // Cálculo de herbívoros
+        $total_consumption = $herbivores * $herbivores_consumption;
+        $actual_grass = max(0, $actual_grass - $total_consumption);
+        $herbivoresReproduction = $herbivores * $herbivores_reproduction_rate * ($actual_grass / $maximun_grass_capacity);
         $huntedHerbivores = min($herbivores, $carnivores * $carnivores_hunting_rate);
-        $herbivores = ($herbivores + $herbivoresReproduction - $huntedHerbivores); //intval
+        $herbivores = $herbivores + $herbivoresReproduction - $huntedHerbivores;
 
-        //Carnivores parameters calculation
+        // Cálculo de carnívoros
         $carnivoresReproduction = $huntedHerbivores * $carnivores_food_reproduction_rate;
-        $deadCarnivores = $carnivores * (1 - ($huntedHerbivores / ($carnivores * $carnivores_food_requeriment)));
-        $carnivores = ($carnivores + $carnivoresReproduction - $deadCarnivores); //intval
+        $deadCarnivores = max(0, $carnivores * (1 - ($huntedHerbivores / ($carnivores * $carnivores_food_requeriment))));
+        $carnivores = $carnivores + $carnivoresReproduction - $deadCarnivores;
 
-        $RESULTS .= "
-        <tr class='hover:bg-gray-700/30 transition-colors'>
-            <td class='px-4 py-2'>$day</td>
-            <td class='px-4 py-2 bg-gray-700'>" . number_format($actual_grass, 2) . "</td>
-            <td class='px-4 py-2'>" . number_format($total_comsumption, 2) . "</td>
-            <td class='px-4 py-2'>" . number_format($climate_factor, 2) . "</td>
-            <td class='px-4 py-2 bg-gray-700'>" . number_format($herbivores, 0) . "</td>
-            <td class='px-4 py-2'>" . number_format($huntedHerbivores, 2) . "</td>
-            <td class='px-4 py-2'>" . number_format($herbivoresReproduction, 2) . "</td>
-            <td class='px-4 py-2 bg-gray-700'>" . number_format($carnivores, 0) . "</td>
-            <td class='px-4 py-2'>" . number_format($deadCarnivores, 2) . "</td>
-            <td class='px-4 py-2'>" . number_format($carnivoresReproduction, 2) . "</td>
-        </tr>";
+        // Almacenar los resultados del día en el array
+        $simulationResults[] = [
+            "day" => $day,
+            "grass" => ($actual_grass),
+            "grassConsumption" => ($total_consumption),
+            "climateFactor" => ($climate_factor),
+            "herbivores" => ($herbivores),
+            "herbivoresHunted" => ($huntedHerbivores),
+            "herbivoresReproduction" => ($herbivoresReproduction),
+            "carnivores" => ($carnivores),
+            "carnivoresDead" => ($deadCarnivores),
+            "carnivoresReproduction" => ($carnivoresReproduction)
+        ];
         $day++;
     }
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -147,7 +128,7 @@ function startSimulation(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grazing Ecosystem</title>
-    <script src="https://unpkg.com/@tailwindcss/browser@4"></script> <!-- Tailwind CSS -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
 </head>
 
 <body class="bg-[#010409] text-white min-h-screen py-4 px-4">
@@ -163,22 +144,19 @@ function startSimulation(
             <article class="w-6/7 mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700">
                 <form method="post" action="" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-
-                        <!-- Simulation Parameters -->
+                        <!-- World Parameters -->
                         <div class="col-span-1 md:col-span-2">
                             <h3 class="text-sky-400 font-semibold text-lg mb-3 border-b border-gray-700 pb-2">World Parameters</h3>
                         </div>
                         <div class="space-y-2">
-                            <label class="block text-gray-300 font-medium" for="actual_grass">Number of days:</label>
+                            <label class="block text-gray-300 font-medium" for="number_of_days">Number of days:</label>
                             <input type="number" id="number_of_days" name="number_of_days" value="<?= $number_of_days ?>"
                                 class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent">
                         </div>
-
                         <div class="space-y-2">
-                            <label class="block text-gray-300 font-medium" for="actual_grass">Average climate factor (random):</label>
-                            <input type="number" id="climate_factor" name="climate_factor" value="<?= $onSimulation == false ? "" : ($averageClimateFactor / ($day - 1)) ?>"
-                                class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-                                readonly>
+                            <label class="block text-gray-300 font-medium" for="climate_factor">Average climate factor (random):</label>
+                            <input type="number" id="climate_factor" name="climate_factor" value="<?= $onSimulation ? ($averageClimateFactor / count($simulationResults)) : "" ?>"
+                                class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent" readonly>
                         </div>
 
                         <!-- Grass Parameters -->
@@ -192,7 +170,7 @@ function startSimulation(
                         </div>
                         <div class="space-y-2">
                             <label class="block text-gray-300 font-medium" for="grass_growth_base_rate">Grass Growth Base Rate (%):</label>
-                            <input type="number" id="grass_growth_base_rate" name="grass_growth_base_rate" value="<?= $grass_growth_base_rate ?>"
+                            <input type="number" step="0.01" id="grass_growth_base_rate" name="grass_growth_base_rate" value="<?= $grass_growth_base_rate ?>"
                                 class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent">
                         </div>
                         <div class="space-y-2">
@@ -212,12 +190,12 @@ function startSimulation(
                         </div>
                         <div class="space-y-2">
                             <label class="block text-gray-300 font-medium" for="herbivores_consumption">Herbivores Consumption:</label>
-                            <input type="number" id="herbivores_consumption" name="herbivores_consumption" value="<?= $herbivores_consumption ?>"
+                            <input type="number" step="0.01" id="herbivores_consumption" name="herbivores_consumption" value="<?= $herbivores_consumption ?>"
                                 class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent">
                         </div>
                         <div class="space-y-2">
                             <label class="block text-gray-300 font-medium" for="herbivores_reproduction_rate">Herbivores Reproduction Rate (%):</label>
-                            <input type="number" id="herbivores_reproduction_rate" name="herbivores_reproduction_rate" value="<?= $herbivores_reproduction_rate ?>"
+                            <input type="number" step="0.01" id="herbivores_reproduction_rate" name="herbivores_reproduction_rate" value="<?= $herbivores_reproduction_rate ?>"
                                 class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent">
                         </div>
 
@@ -231,7 +209,7 @@ function startSimulation(
                                 class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent">
                         </div>
                         <div class="space-y-2">
-                            <label class="block text-gray-300 font-medium" for="carnivores_hunting_rate">Carnivores Hunting efficiency:</label>
+                            <label class="block text-gray-300 font-medium" for="carnivores_hunting_rate">Carnivores Hunting Efficiency:</label>
                             <input type="number" step="0.01" id="carnivores_hunting_rate" name="carnivores_hunting_rate" value="<?= $carnivores_hunting_rate ?>"
                                 class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent">
                         </div>
@@ -246,7 +224,6 @@ function startSimulation(
                                 class="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent">
                         </div>
                     </div>
-
                     <div class="pt-2 text-center">
                         <button type="submit" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-8 rounded-md transition-colors duration-200 shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">
                             Run Simulation
@@ -255,11 +232,44 @@ function startSimulation(
                 </form>
             </article>
 
-            <article class="<?= $onSimulation == false ? "" :  "w-6/7 mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700 overflow-auto" ?>">
-                <?= $onSimulation == false ? "" :  $RESULTS ?>
+            <article class="<?= $onSimulation ? "w-6/7 mx-auto bg-gray-800/50 rounded-xl p-6 shadow-lg border border-gray-700 overflow-auto" : "" ?>">
+                <?php if ($onSimulation): ?>
+                    <table class="min-w-full divide-y divide-gray-700 text-sm">
+                        <thead>
+                            <tr class="text-center">
+                                <th class="px-4 py-2">Day</th>
+                                <th class="px-4 py-2">Grass</th>
+                                <th class="px-4 py-2">Grass Consumption</th>
+                                <th class="px-4 py-2">Climate Factor</th>
+                                <th class="px-4 py-2">Herbivores</th>
+                                <th class="px-4 py-2">Herbivores Hunted</th>
+                                <th class="px-4 py-2">Herbivores Reproduction</th>
+                                <th class="px-4 py-2">Carnivores</th>
+                                <th class="px-4 py-2">Carnivores Dead</th>
+                                <th class="px-4 py-2">Carnivores Reproduction</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($simulationResults as $row): ?>
+                                <tr class="hover:bg-gray-700/30 transition-colors text-center">
+                                    <td class="px-4 py-2"><?= number_format($row['day'], 0) ?></td>
+                                    <td class="px-4 py-2 bg-gray-700"><?= number_format($row['grass'], 2) ?></td>
+                                    <td class="px-4 py-2"><?= number_format($row['grassConsumption'], 2) ?></td>
+                                    <td class="px-4 py-2"><?= number_format($row['climateFactor'], 2) ?></td>
+                                    <td class="px-4 py-2 bg-gray-700"><?= number_format($row['herbivores'], 0) ?></td>
+                                    <td class="px-4 py-2"><?= number_format($row['herbivoresHunted'], 2) ?></td>
+                                    <td class="px-4 py-2"><?= number_format($row['herbivoresReproduction'], 2) ?></td>
+                                    <td class="px-4 py-2 bg-gray-700"><?= number_format($row['carnivores'], 0) ?></td>
+                                    <td class="px-4 py-2"><?= number_format($row['carnivoresDead'], 2) ?></td>
+                                    <td class="px-4 py-2"><?= number_format($row['carnivoresReproduction'], 2) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
             </article>
-
         </section>
-
     </main>
 </body>
+
+</html>
